@@ -1,0 +1,184 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 15% 96%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 92%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 30% 94%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 85%;
+    --input: 214 20% 85%;
+    --ring: 221 83% 53%;
+    --radius: 0.625rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 221 83% 53%;
+
+    /* Custom tokens */
+    --bubble: 210 30% 94%;
+    --bubble-filled: 221 83% 53%;
+    --bubble-foreground: 210 40% 98%;
+    --review: 38 92% 50%;
+    --success: 142 71% 40%;
+    --success-foreground: 0 0% 100%;
+    --omr-line: 214 20% 90%;
+    --timer: 0 84% 60%;
+    --timer-safe: 142 71% 40%;
+    --timer-warn: 38 92% 50%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 40% 10%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 40% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 217 20% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 20% 15%;
+    --muted-foreground: 215 20% 60%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 96%;
+    --border: 217 20% 22%;
+    --input: 217 20% 22%;
+    --ring: 217 91% 60%;
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 217 20% 14%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 217 20% 18%;
+    --sidebar-ring: 217 91% 60%;
+    --bubble: 217 20% 18%;
+    --bubble-filled: 217 91% 60%;
+    --bubble-foreground: 222 47% 6%;
+    --review: 38 92% 50%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --omr-line: 217 20% 22%;
+    --timer: 0 72% 51%;
+    --timer-safe: 142 71% 45%;
+    --timer-warn: 38 92% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
+    font-family: 'Inter', sans-serif;
+  }
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  /* OMR Grid Cell */
+  .omr-cell {
+    @apply relative p-2 rounded-lg border border-border/40 bg-card transition-all duration-100;
+    min-width: 0;
+  }
+  .omr-cell:hover {
+    @apply border-border;
+  }
+  .omr-cell-review {
+    @apply border-review/40 bg-review/5;
+  }
+  .omr-cell-answered {
+    @apply border-primary/30;
+  }
+
+  /* Small OMR Bubbles */
+  .omr-bubble-sm {
+    @apply w-7 h-7 rounded-full border-2 border-border/60 flex items-center justify-center text-[10px] font-bold font-mono cursor-pointer transition-all duration-100 select-none text-muted-foreground/60;
+  }
+  .omr-bubble-sm:hover:not(:disabled) {
+    @apply border-primary/50 text-foreground scale-110;
+  }
+  .omr-bubble-sm-filled {
+    @apply bg-[hsl(var(--bubble-filled))] text-[hsl(var(--bubble-foreground))] border-[hsl(var(--bubble-filled))] shadow-sm;
+  }
+  .omr-bubble-sm-filled:hover:not(:disabled) {
+    @apply opacity-85 scale-110;
+  }
+  .omr-bubble-sm-correct {
+    @apply bg-success text-success-foreground border-success;
+  }
+  .omr-bubble-sm-wrong {
+    @apply bg-destructive text-destructive-foreground border-destructive;
+  }
+
+  /* OMR Grid */
+  .omr-grid {
+    @apply grid gap-2;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  @media (min-width: 640px) {
+    .omr-grid {
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    }
+  }
+  @media (min-width: 1024px) {
+    .omr-grid {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+  }
+
+  /* Legacy row (kept for answer key) */
+  .omr-bubble {
+    @apply w-9 h-9 rounded-full border-2 border-border flex items-center justify-center cursor-pointer transition-all duration-150 text-sm font-semibold select-none;
+  }
+  .omr-bubble:hover {
+    @apply border-primary/60 scale-105;
+  }
+  .omr-bubble-filled {
+    @apply bg-[hsl(var(--bubble-filled))] text-[hsl(var(--bubble-foreground))] border-[hsl(var(--bubble-filled))] shadow-md;
+  }
+  .omr-bubble-filled:hover {
+    @apply opacity-90;
+  }
+  .omr-row {
+    @apply flex items-center gap-3 py-2 px-3 border-b border-[hsl(var(--omr-line))];
+  }
+  .review-badge {
+    @apply text-[hsl(var(--review))];
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

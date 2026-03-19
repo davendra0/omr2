@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "test": {
+      "title": "Test",
+      "description": "A test definition stored on the server.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "numQuestions": { "type": "integer" },
+        "timeInMinutes": { "type": "integer" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "imageUrl": { "type": "string" },
+              "correctAnswer": { "type": "string", "enum": ["A", "B", "C", "D", ""] }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "numQuestions", "timeInMinutes"]
+    },
+    "submission": {
+      "title": "Submission",
+      "description": "A user's attempt at a test.",
+      "type": "object",
+      "properties": {
+        "testId": { "type": "string" },
+        "userId": { "type": "string" },
+        "answers": { "type": "object" },
+        "score": { "type": "number" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["testId", "userId", "answers"]
+    }
+  },
+  "firestore": {
+    "/tests/{testId}": {
+      "schema": "test",
+      "description": "Publicly available tests."
+    },
+    "/submissions/{submissionId}": {
+      "schema": "submission",
+      "description": "User test submissions."
+    }
+  }
+}

@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: tests
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required, 1-100 chars)
+    //   - description: string (optional, 0-500 chars)
+    //   - numQuestions: int (required, 1-300)
+    //   - timeInMinutes: int (required, 1-600)
+    //   - questions: list (optional, max 300 items)
+    //   - createdAt: timestamp (required)
+    //   - createdBy: string (required, UID)
+    //
+    // Collection: submissions
+    // Document ID: auto-generated
+    // Fields:
+    //   - testId: string (required)
+    //   - userId: string (required, UID)
+    //   - answers: map (required)
+    //   - score: number (optional)
+    //   - completedAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.createdBy;
+    }
+    function isAdmin(testId) {
+      // 1. Real Firebase Auth Admin (Email)
+      let isRealAdmin = isAuthenticated() && 
+        (request.auth.token.email == "manishayadav0512198500@gmail.com" || 
+         request.auth.token.email == "dav08kum@gmail.com") && 
+        request.auth.token.email_verified == true;
+      
+      // 2. Mock Admin (Passcode in request or existing document)
+      let hasPasscode = (request.resource != null && 'passcode' in request.resource.data && request.resource.data.passcode == "Davendra@07") ||
+                        (resource != null && 'passcode' in resource.data && resource.data.passcode == "Davendra@07");
+      
+      // 3. Test-specific admin (if we only have testId)
+      let isTestAdmin = testId != null && get(/databases/$(database)/documents/tests/$(testId)).data.passcode == "Davendra@07";
+
+      return isRealAdmin || hasPasscode || isTestAdmin;
+    }
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    function isValidString(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidTest(data, isUpdate) {
+      let requiredFields = isUpdate ? ['title', 'numQuestions', 'timeInMinutes', 'passcode'] : ['title', 'numQuestions', 'timeInMinutes', 'createdAt', 'createdBy', 'passcode'];
+      return hasRequiredFields(requiredFields) &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+        data.numQuestions is int && data.numQuestions > 0 && data.numQuestions <= 300 &&
+        data.timeInMinutes is int && data.timeInMinutes > 0 && data.timeInMinutes <= 600 &&
+        data.passcode == "Davendra@07" &&
+        (isUpdate || (data.createdBy is string && data.createdBy.size() > 0));
+    }
+
+    function isValidSubmission(data) {
+      return hasRequiredFields(['testId', 'userId', 'answers', 'completedAt']) &&
+        data.testId is string &&
+        (data.userId == request.auth.uid || data.userId == 'admin_davendra') &&
+        data.answers is map;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+    match /tests/{testId} {
+      allow read: if true;
+      allow create: if (isAuthenticated() || request.resource.data.passcode == "Davendra@07") && isValidTest(request.resource.data, false);
+      allow update: if (isDocOwner() || isAdmin(testId)) && isValidTest(request.resource.data, true);
+      allow delete: if isDocOwner() || isAdmin(testId);
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin(resource.data.testId);
+      allow create: if (isAuthenticated() || request.resource.data.userId == 'admin_davendra') && isValidSubmission(request.resource.data);
+      allow update: if false; // Submissions are immutable
+      allow delete: if isOwner(resource.data.userId) || isAdmin(resource.data.testId);
+    }
+  }
+}
