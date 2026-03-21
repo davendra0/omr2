@@ -39,21 +39,17 @@ service cloud.firestore {
     function isDocOwner() {
       return isAuthenticated() && request.auth.uid == resource.data.createdBy;
     }
-    function isAdmin(testId) {
+    function isAdmin() {
       // 1. Real Firebase Auth Admin (Email)
       let isRealAdmin = isAuthenticated() && 
         (request.auth.token.email == "manishayadav0512198500@gmail.com" || 
-         request.auth.token.email == "dav08kum@gmail.com") && 
-        request.auth.token.email_verified == true;
+         request.auth.token.email == "dav08kum@gmail.com");
       
       // 2. Mock Admin (Passcode in request or existing document)
       let hasPasscode = (request.resource != null && 'passcode' in request.resource.data && request.resource.data.passcode == "Davendra@07") ||
                         (resource != null && 'passcode' in resource.data && resource.data.passcode == "Davendra@07");
       
-      // 3. Test-specific admin (if we only have testId)
-      let isTestAdmin = testId != null && get(/databases/$(database)/documents/tests/$(testId)).data.passcode == "Davendra@07";
-
-      return isRealAdmin || hasPasscode || isTestAdmin;
+      return isRealAdmin || hasPasscode;
     }
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
@@ -90,15 +86,22 @@ service cloud.firestore {
     match /tests/{testId} {
       allow read: if true;
       allow create: if (isAuthenticated() || request.resource.data.passcode == "Davendra@07") && isValidTest(request.resource.data, false);
-      allow update: if (isDocOwner() || isAdmin(testId)) && isValidTest(request.resource.data, true);
-      allow delete: if isDocOwner() || isAdmin(testId);
+      allow update: if (isDocOwner() || isAdmin()) && isValidTest(request.resource.data, true);
+      allow delete: if isDocOwner() || isAdmin();
     }
 
     match /submissions/{submissionId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin(resource.data.testId);
+      allow read: if true;
       allow create: if (isAuthenticated() || request.resource.data.userId == 'admin_davendra') && isValidSubmission(request.resource.data);
       allow update: if false; // Submissions are immutable
-      allow delete: if isOwner(resource.data.userId) || isAdmin(resource.data.testId);
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /annotations/{annotationId} {
+      allow read: if true;
+      allow create: if isAuthenticated() || request.resource.data.userId == 'admin_davendra';
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }

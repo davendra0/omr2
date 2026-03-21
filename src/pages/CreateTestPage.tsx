@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Image as ImageIcon, Check, Upload, Grid, List, ChevronLeft, ChevronRight, AlertCircle, Hash, Type } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TestSection, QuestionType, QuestionData } from '@/types/test';
+import { PdfQuestionExtractor } from '@/components/PdfQuestionExtractor';
+import { FileText } from 'lucide-react';
 
 enum OperationType {
   CREATE = 'create',
@@ -86,7 +88,16 @@ const CreateTestPage = () => {
   const [sections, setSections] = useState<TestSection[]>([]);
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [activeQuestion, setActiveQuestion] = useState(1);
+  const [showPdfExtractor, setShowPdfExtractor] = useState(false);
   const bulkInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setActiveQuestion(prev => {
+      if (prev < startFrom) return startFrom;
+      if (prev >= startFrom + numQuestions) return Math.max(startFrom, startFrom + numQuestions - 1);
+      return prev;
+    });
+  }, [startFrom, numQuestions]);
 
   useEffect(() => {
     const fetchTest = async () => {
@@ -166,10 +177,12 @@ const CreateTestPage = () => {
     const newQuestions = [...questions];
     
     for (let i = 0; i < files.length; i++) {
-      const qId = startFrom + i;
-      if (qId >= startFrom + numQuestions) break;
-
       const file = files[i];
+      const match = file.name.match(/(\d+)/);
+      const qId = match ? parseInt(match[1]) : startFrom + i;
+      
+      if (qId >= startFrom + numQuestions && !match) break;
+
       const reader = new FileReader();
       const compressed = await new Promise<string>((resolve) => {
         reader.onloadend = async () => {
@@ -213,11 +226,20 @@ const CreateTestPage = () => {
   };
 
   const addSection = () => {
+    const lastEnd = sections.length > 0 ? sections[sections.length - 1].endQ : startFrom - 1;
+    const nextStart = lastEnd + 1;
+    const nextEnd = Math.min(nextStart + 9, startFrom + numQuestions - 1);
+    
+    if (nextStart > startFrom + numQuestions - 1) {
+      toast.error("All questions are already assigned to sections");
+      return;
+    }
+
     const newSection: TestSection = {
       id: crypto.randomUUID(),
       name: `Section ${sections.length + 1}`,
-      startQ: sections.length > 0 ? sections[sections.length - 1].endQ + 1 : startFrom,
-      endQ: sections.length > 0 ? sections[sections.length - 1].endQ + 10 : startFrom + 9,
+      startQ: nextStart,
+      endQ: nextEnd,
       type: 'mcq'
     };
     setSections([...sections, newSection]);
@@ -333,6 +355,26 @@ const CreateTestPage = () => {
       // Error already handled by handleFirestoreError if it was a firestore error
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePdfCapture = async (imageData: string) => {
+    const compressed = await compressImage(imageData);
+    
+    setQuestions(prev => {
+      const existing = prev.find(q => q.id === activeQuestion);
+      if (existing) {
+        return prev.map(q => q.id === activeQuestion ? { ...q, imageUrl: compressed } : q);
+      }
+      return [...prev, { id: activeQuestion, imageUrl: compressed, correctAnswer: '', type: 'mcq' }];
+    });
+
+    // Move to next question automatically
+    if (activeQuestion < startFrom + numQuestions - 1) {
+      setActiveQuestion(prev => prev + 1);
+    } else {
+      toast.success("All questions captured!");
+      setShowPdfExtractor(false);
     }
   };
 
@@ -573,6 +615,15 @@ const CreateTestPage = () => {
                 <Upload className="w-3.5 h-3.5" />
                 Bulk Upload Images
               </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start gap-2 h-9 text-xs bg-primary/5 border-primary/20 hover:bg-primary/10"
+                onClick={() => setShowPdfExtractor(true)}
+                disabled={loading}
+              >
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                Extract from PDF
+              </Button>
               <p className="text-[10px] text-muted-foreground italic">
                 Tip: Sort images as Q1.jpg, Q2.jpg... for auto-assignment.
               </p>
@@ -797,6 +848,14 @@ const CreateTestPage = () => {
           })}
         </div>
       </div>
+
+      {showPdfExtractor && (
+        <PdfQuestionExtractor 
+          currentQuestion={activeQuestion}
+          onCapture={handlePdfCapture}
+          onClose={() => setShowPdfExtractor(false)}
+        />
+      )}
     </div>
   );
 };

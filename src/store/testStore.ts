@@ -58,6 +58,7 @@ export const useTestStore = create<TestStore>((set, get) => ({
   selectOption: (questionNo, option) => {
     const { responses, config } = get();
     const getQuestionType = (qNo: number) => {
+      if (config?.questionTypes?.[qNo]) return config.questionTypes[qNo];
       if (!config?.sections) return 'mcq';
       const section = config.sections.find(s => qNo >= s.startQ && qNo <= s.endQ);
       return section?.type || 'mcq';

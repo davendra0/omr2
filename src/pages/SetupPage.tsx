@@ -216,10 +216,19 @@ const SetupPage = () => {
     const start = parseInt(startFrom) || 1;
     const time = parseInt(timeInMinutes);
     if (!total || total < 1 || !time || time < 1) return;
+
+    const sections = buildSections(qSections);
+    // Validate sections are within range
+    const invalidSection = sections.find(s => s.startQ < start || s.endQ > start + total - 1 || s.startQ > s.endQ);
+    if (invalidSection) {
+      toast.error(`Section "${invalidSection.name}" is out of range (Q${start}–Q${start + total - 1})`);
+      return;
+    }
+
     localStorage.removeItem(AUTOSAVE_KEY);
     setConfig({
       totalQuestions: total, startFrom: start, timeInMinutes: time,
-      sections: buildSections(qSections),
+      sections,
       displayPrefs: qDisplayPrefs,
       wallClockStartTime: wallClockStart || undefined,
     });
@@ -249,44 +258,16 @@ const SetupPage = () => {
   };
 
   const handleViewSubmissionAnalysis = (sub: any) => {
-    if (!viewingTest) return;
-    const responses = Object.entries(sub.answers).map(([qNo, selected]) => ({
-      questionNo: parseInt(qNo),
-      selected: selected as any,
-      markedForReview: false,
-      marks: [],
-      answeredAt: null
-    }));
-
-    const result = {
-      config: {
-        totalQuestions: viewingTest.numQuestions,
-        startFrom: 1,
-        timeInMinutes: viewingTest.timeInMinutes,
-        sections: [],
-        displayPrefs: DEFAULT_DISPLAY_PREFS,
-        title: viewingTest.title,
-        correctAnswers: viewingTest.questions?.reduce((acc: any, q: any) => {
-          acc[q.id] = q.correctAnswer;
-          return acc;
-        }, {}) || {}
-      },
-      responses,
-      startTime: 0,
-      endTime: 0
-    };
-
-    setResult(result as any);
-    navigate('/analysis');
+    navigate(`/review/submission/${sub.id}`);
   };
 
   const handleStartServerTest = (test: any) => {
     localStorage.removeItem(AUTOSAVE_KEY);
     setConfig({
       totalQuestions: test.numQuestions,
-      startFrom: 1,
+      startFrom: test.startFrom || 1,
       timeInMinutes: test.timeInMinutes,
-      sections: [],
+      sections: test.sections || [],
       displayPrefs: { ...DEFAULT_DISPLAY_PREFS },
       isServerTest: true,
       testId: test.id,
@@ -332,9 +313,19 @@ const SetupPage = () => {
     const start = parseInt(planStart) || 1;
     const time = parseInt(planTime);
     if (!total || !time || !planDate || !planName.trim()) return;
+
+    const sections = buildSections(planSections);
+    // Validate sections are within range
+    const invalidSection = sections.find(s => s.startQ < start || s.endQ > start + total - 1 || s.startQ > s.endQ);
+    if (invalidSection) {
+      toast.error(`Section "${invalidSection.name}" is out of range (Q${start}–Q${start + total - 1})`);
+      return;
+    }
+
     addPlannedTest({
       name: planName.trim(), totalQuestions: total, startFrom: start, timeInMinutes: time,
       scheduledDate: format(planDate, 'yyyy-MM-dd'),
+      sections,
     });
     setPlanned(getPlannedTests());
     setPlanName(''); setPlanQuestions(''); setPlanStart('1'); setPlanTime(''); setPlanDate(undefined);
@@ -346,7 +337,7 @@ const SetupPage = () => {
     localStorage.removeItem(AUTOSAVE_KEY);
     setConfig({
       totalQuestions: test.totalQuestions, startFrom: test.startFrom, timeInMinutes: test.timeInMinutes,
-      sections: [], displayPrefs: { ...DEFAULT_DISPLAY_PREFS },
+      sections: test.sections || [], displayPrefs: { ...DEFAULT_DISPLAY_PREFS },
     });
     startTest();
     sessionStorage.setItem('planned_test_id', test.id);

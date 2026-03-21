@@ -88,19 +88,6 @@ const Timer = ({ totalSeconds, onTimeUp, showCountdown = true, showWallClock = f
           🕐 {wallStr}
         </span>
       )}
-      <button
-        type="button"
-        onClick={() => setPaused((p) => !p)}
-        className="px-2 py-1 border border-border rounded text-xs font-bold text-foreground hover:bg-muted transition-colors"
-        title={paused ? 'Resume timer' : 'Pause timer'}
-      >
-        {paused ? '▶' : '⏸'}
-      </button>
-      {displayPausedTotal > 0 && (
-        <span className="font-mono text-xs text-muted-foreground">
-          ⏸ {formatPaused(displayPausedTotal)}
-        </span>
-      )}
     </div>
   );
 };

@@ -72,6 +72,12 @@ const HistoryPage = () => {
     navigate('/omr');
   };
 
+  const handleReview = (test: SavedTest) => {
+    setResult(test.result);
+    if (test.answerKey) setAnswerKey(test.answerKey);
+    navigate('/results');
+  };
+
   function formatDate(ts: number) {
     const d = new Date(ts);
     return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
@@ -170,6 +176,13 @@ const HistoryPage = () => {
                     <div className="text-xs text-muted-foreground mt-1">{formatDate(test.savedAt)}</div>
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleReview(test); }}
+                      className="text-primary hover:bg-primary/10 text-xs px-2 py-1 rounded border border-primary/20 font-bold"
+                      title="Review Paper"
+                    >
+                      Review
+                    </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditingId(test.id); setEditName(test.name); }}
                       className="text-muted-foreground hover:text-primary text-sm p-1"

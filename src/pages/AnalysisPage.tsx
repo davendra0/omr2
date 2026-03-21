@@ -1,6 +1,8 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Menu, X, Home, ArrowLeft, Moon, Sun, BarChart2, Search } from 'lucide-react';
 import { useTestStore } from '@/store/testStore';
+import { useTheme } from 'next-themes';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
@@ -10,6 +12,7 @@ import {
   getAnnotation, saveAnnotation, getAnnotationsForTest,
   type QuestionAnnotation, type MistakeType, MISTAKE_TYPES,
 } from '@/lib/mistakeStore';
+import { AnnotationEditor } from '@/components/AnnotationEditor';
 import { getSavedTests } from '@/lib/testHistory';
 import type { TestSection } from '@/types/test';
 
@@ -22,12 +25,14 @@ const COLORS = {
   speed: 'hsl(142, 71%, 45%)', // Green for d(score)/dt
 };
 
-const AnalysisPage = () => {
+const AnalysisPage = ({ isEmbedded = false }: { isEmbedded?: boolean }) => {
   const { result, answerKey } = useTestStore();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const [annotatingQ, setAnnotatingQ] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overall' | 'combined' | string>('overall');
   const [selectedForCombined, setSelectedForCombined] = useState<string[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
 
   const currentTestId = useMemo(() => {
     if (!result) return '';
@@ -86,12 +91,36 @@ const AnalysisPage = () => {
     return map;
   }, [result]);
 
+  const getQuestionType = useCallback((qNo: number) => {
+    if (!result) return 'mcq';
+    const cfg = result.config;
+    if (cfg.questionTypes?.[qNo]) return cfg.questionTypes[qNo];
+    if (!cfg.sections) return 'mcq';
+    const section = cfg.sections.find(s => qNo >= s.startQ && qNo <= s.endQ);
+    return section?.type || 'mcq';
+  }, [result]);
+
   const analysis = useMemo(() => {
     if (!result || !answerKey) return [];
     return result.responses.map((r) => {
       const correct = answerKey[r.questionNo] ?? null;
-      const isCorrect = r.selected !== null && r.selected === correct;
-      const isWrong = r.selected !== null && correct !== null && r.selected !== correct;
+      const type = getQuestionType(r.questionNo);
+      
+      let isCorrect = false;
+      let isWrong = false;
+      
+      if (r.selected !== null && correct !== null) {
+        if (type === 'numerical') {
+          const sVal = parseFloat(r.selected);
+          const cVal = parseFloat(correct);
+          isCorrect = !isNaN(sVal) && !isNaN(cVal) && sVal === cVal;
+          isWrong = !isCorrect;
+        } else {
+          isCorrect = r.selected === correct;
+          isWrong = r.selected !== correct;
+        }
+      }
+
       return {
         questionNo: r.questionNo,
         selected: r.selected,
@@ -99,13 +128,14 @@ const AnalysisPage = () => {
         isCorrect,
         isWrong,
         isSkipped: r.selected === null,
-        marks: isCorrect ? 4 : isWrong ? -1 : 0,
+        marks: isCorrect ? 4 : (isWrong && type !== 'numerical') ? -1 : 0,
         timeGap: timeGaps[r.questionNo] ?? null,
         answeredAt: r.answeredAt,
         attemptIdx: attemptOrder.get(r.questionNo) ?? 999,
+        type,
       };
     });
-  }, [result, answerKey, timeGaps, attemptOrder]);
+  }, [result, answerKey, timeGaps, attemptOrder, getQuestionType]);
 
   const fmt = (s: number) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 
@@ -140,14 +170,51 @@ const AnalysisPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-16">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="px-2 py-2 border border-border rounded text-sm text-foreground hover:bg-muted" title="Home">🏠</button>
-          <button onClick={() => navigate('/results')} className="px-3 py-2 border border-border rounded text-sm text-foreground hover:bg-muted">← Back</button>
-          <h1 className="text-xl font-bold font-mono text-foreground">Detailed Analysis</h1>
-        </div>
+    <div className={isEmbedded ? "relative" : "min-h-screen bg-background p-3 sm:p-4 pb-16 relative"}>
+      {!isEmbedded && (
+        <>
+          {/* Desktop Header */}
+          <div className="hidden md:flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate(-1)} className="px-3 py-2 border border-border rounded text-sm text-foreground hover:bg-muted flex items-center gap-1.5"><ArrowLeft size={16} /> Back</button>
+              <h1 className="text-xl font-bold font-mono text-foreground">Detailed Analysis</h1>
+            </div>
+          </div>
+
+          {/* Mobile Header (Minimal) */}
+          <div className="md:hidden flex items-center justify-between mb-4">
+            <h1 className="text-lg font-bold font-mono text-foreground">Detailed Analysis</h1>
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate(-1)} className="p-2 hover:bg-muted rounded-full transition-colors"><ArrowLeft size={20} /></button>
+            </div>
+          </div>
+
+          {/* Analysis Menu Tiles (Mobile & Desktop) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex flex-col items-center gap-1.5 p-3 bg-card border border-border rounded-xl hover:bg-muted transition-colors"
+            >
+              <ArrowLeft size={20} className="text-primary" />
+              <span className="text-[10px] font-bold font-mono uppercase tracking-wider">Back</span>
+            </button>
+            <button
+              onClick={() => navigate('/results')}
+              className="flex flex-col items-center gap-1.5 p-3 bg-card border border-border rounded-xl hover:bg-muted transition-colors"
+            >
+              <BarChart2 size={20} className="text-primary" />
+              <span className="text-[10px] font-bold font-mono uppercase tracking-wider">Results</span>
+            </button>
+            <button
+              onClick={() => navigate('/review')}
+              className="flex flex-col items-center gap-1.5 p-3 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+            >
+              <Search size={20} />
+              <span className="text-[10px] font-bold font-mono uppercase tracking-wider">Review</span>
+            </button>
+          </div>
+        </>
+      )}
 
         {/* Section tabs */}
         {sections.length > 0 && (
@@ -215,7 +282,6 @@ const AnalysisPage = () => {
           onAnnotationSaved={refreshAnnotations}
         />
       </div>
-    </div>
   );
 };
 
@@ -485,20 +551,23 @@ function AnalysisContent({
 
       {/* Option distribution */}
       <div className="bg-card border border-border rounded-lg p-4">
-        <h3 className="font-mono text-sm text-muted-foreground font-bold mb-3">Option Distribution: Yours vs Key</h3>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-mono text-sm text-muted-foreground font-bold">Option Distribution: Yours vs Key</h3>
+          <span className="text-[10px] text-muted-foreground">(MCQ only)</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2 sm:gap-4">
           {(['A', 'B', 'C', 'D'] as const).map((opt) => {
-            const yours = analysis.filter(a => a.selected === opt).length;
-            const key = analysis.filter(a => a.correct === opt).length;
+            const yours = analysis.filter(a => a.type !== 'numerical' && a.selected === opt).length;
+            const key = analysis.filter(a => a.type !== 'numerical' && a.correct === opt).length;
             return (
-              <div key={opt} className="text-center border border-border rounded-lg p-3">
-                <div className="font-mono text-lg font-bold text-foreground">{opt}</div>
-                <div className="mt-2 text-sm">
+              <div key={opt} className="text-center border border-border rounded-lg p-2 sm:p-3">
+                <div className="font-mono text-base sm:text-lg font-bold text-foreground">{opt}</div>
+                <div className="mt-1 sm:mt-2 text-xs">
                   <div className="text-primary font-mono font-bold">{yours}</div>
                   <div className="text-[10px] text-muted-foreground">Your picks</div>
                 </div>
-                <div className="h-px bg-border my-2" />
-                <div className="text-sm">
+                <div className="h-px bg-border my-1.5 sm:my-2" />
+                <div className="text-xs">
                   <div className="text-[hsl(var(--success))] font-mono font-bold">{key}</div>
                   <div className="text-[10px] text-muted-foreground">In key</div>
                 </div>
@@ -507,6 +576,25 @@ function AnalysisContent({
           })}
         </div>
       </div>
+
+      {/* Numerical Summary if exists */}
+      {analysis.some(a => a.type === 'numerical') && (
+        <div className="bg-card border border-border rounded-lg p-4">
+          <h3 className="font-mono text-sm text-muted-foreground font-bold mb-3">Numerical Questions Performance</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Correct', val: analysis.filter(a => a.type === 'numerical' && a.isCorrect).length, color: COLORS.correct },
+              { label: 'Wrong', val: analysis.filter(a => a.type === 'numerical' && a.isWrong).length, color: COLORS.incorrect },
+              { label: 'Skipped', val: analysis.filter(a => a.type === 'numerical' && a.isSkipped).length, color: COLORS.unanswered },
+            ].map(s => (
+              <div key={s.label} className="text-center p-2 border border-border rounded-lg">
+                <div className="text-xl font-bold font-mono" style={{ color: s.color }}>{s.val}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Worst time wasters */}
       {worstTimeWasted.length > 0 && (
@@ -612,30 +700,33 @@ function QuestionTable({
               <div key={item.questionNo}>
                 <div
                   onClick={() => setAnnotatingQ(isAnnotating ? null : item.questionNo)}
-                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-border/30 cursor-pointer hover:bg-muted/30 transition-colors ${
+                  className={`flex items-center gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-2.5 border-b border-border/30 cursor-pointer hover:bg-muted/30 transition-colors ${
                     item.isCorrect ? 'bg-[hsl(var(--success))]/5' : item.isWrong ? 'bg-destructive/5' : ''
                   } ${idx % 2 !== 0 ? 'bg-muted/10' : ''}`}
                 >
-                  <span className="font-mono text-sm font-bold text-muted-foreground w-14 text-right shrink-0">{item.questionNo}</span>
+                  <span className="font-mono text-xs sm:text-sm font-bold text-muted-foreground w-10 sm:w-14 text-right shrink-0 flex items-center justify-end gap-1">
+                    {item.questionNo}
+                    {item.type === 'numerical' && <span className="text-[7px] sm:text-[8px] bg-primary/20 text-primary px-1 rounded leading-tight">N</span>}
+                  </span>
                   {sortMode === 'attempt' && (
-                    <span className="font-mono text-[10px] text-muted-foreground w-8">#{item.attemptIdx}</span>
+                    <span className="font-mono text-[9px] sm:text-[10px] text-muted-foreground w-6 sm:w-8">#{item.attemptIdx}</span>
                   )}
-                  <span className={`font-mono font-bold w-8 ${!item.selected ? 'text-muted-foreground/40' : 'text-foreground'}`}>{item.selected ?? '—'}</span>
-                  <span className="font-mono font-bold w-8 text-primary">{item.correct ?? '—'}</span>
-                  <span className="font-mono text-xs font-bold w-10">
+                  <span className={`font-mono font-bold w-6 sm:w-8 text-xs sm:text-base ${!item.selected ? 'text-muted-foreground/40' : 'text-foreground'}`}>{item.selected ?? '—'}</span>
+                  <span className="font-mono font-bold w-6 sm:w-8 text-xs sm:text-base text-primary">{item.correct ?? '—'}</span>
+                  <span className="font-mono text-[10px] sm:text-xs font-bold w-8 sm:w-10">
                     {item.isSkipped ? <span className="text-muted-foreground">SKIP</span> : item.isCorrect ? <span className="text-[hsl(var(--success))]">✓</span> : <span className="text-destructive">✗</span>}
                   </span>
-                  <span className={`font-mono font-bold text-xs w-10 text-right ${item.marks > 0 ? 'text-[hsl(var(--success))]' : item.marks < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  <span className={`font-mono font-bold text-[10px] sm:text-xs w-8 sm:w-10 text-right ${item.marks > 0 ? 'text-[hsl(var(--success))]' : item.marks < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {item.marks > 0 ? `+${item.marks}` : item.marks}
                   </span>
-                  <span className="font-mono text-xs text-muted-foreground w-12 text-right">{item.timeGap != null ? fmt(item.timeGap) : '—'}</span>
+                  <span className="font-mono text-[10px] sm:text-xs text-muted-foreground w-10 sm:w-12 text-right">{item.timeGap != null ? fmt(item.timeGap) : '—'}</span>
                   {ann && (
-                    <span className="ml-auto text-xs" title={`${MISTAKE_TYPES[ann.mistakeType].label}: ${ann.notes}`}>
+                    <span className="ml-auto text-[10px] sm:text-xs" title={`${MISTAKE_TYPES[ann.mistakeType].label}: ${ann.notes}`}>
                       {MISTAKE_TYPES[ann.mistakeType].icon}
                       {ann.imageData && ' 🖼'}
                     </span>
                   )}
-                  {!ann && <span className="ml-auto text-[10px] text-muted-foreground">+ annotate</span>}
+                  {!ann && <span className="ml-auto text-[8px] sm:text-[10px] text-muted-foreground">+ note</span>}
                 </div>
                 {isAnnotating && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -650,6 +741,7 @@ function QuestionTable({
                         selected={item.selected}
                         correct={item.correct}
                         existing={ann}
+                        type={item.type}
                         onSave={() => { onAnnotationSaved(); setAnnotatingQ(null); }}
                         onCancel={() => setAnnotatingQ(null)}
                       />
@@ -659,149 +751,6 @@ function QuestionTable({
               </div>
             );
           })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AnnotationEditor({
-  testId, testName, questionNo, selected, correct, existing, onSave, onCancel,
-}: {
-  testId: string; testName: string; questionNo: number;
-  selected: string | null; correct: string | null;
-  existing?: QuestionAnnotation;
-  onSave: () => void; onCancel: () => void;
-}) {
-  const [mistakeType, setMistakeType] = useState<MistakeType>(existing?.mistakeType || 'silly');
-  const [notes, setNotes] = useState(existing?.notes || '');
-  const [imageData, setImageData] = useState<string | undefined>(existing?.imageData);
-  const [tags, setTags] = useState<string[]>(existing?.tags || []);
-  const [tagInput, setTagInput] = useState('');
-  const [lightbox, setLightbox] = useState(false);
-
-  const handleImageFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => setImageData(reader.result as string);
-    reader.readAsDataURL(file);
-  }, []);
-
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) handleImageFile(file);
-        return;
-      }
-    }
-  }, [handleImageFile]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) handleImageFile(file);
-  }, [handleImageFile]);
-
-  const addTag = (raw: string) => {
-    const t = raw.trim().toLowerCase();
-    if (t && !tags.includes(t)) setTags([...tags, t]);
-    setTagInput('');
-  };
-
-  const handleSave = () => {
-    saveAnnotation({
-      testId, testName, questionNo, mistakeType, notes, imageData, selected, correct, tags,
-      createdAt: existing?.createdAt || Date.now(), updatedAt: Date.now(),
-    });
-    onSave();
-  };
-
-  return (
-    <div className="bg-muted/50 border-b border-border px-4 py-3 space-y-3" onPaste={handlePaste} onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
-      <div className="text-xs font-mono text-muted-foreground">
-        Annotate Q.{questionNo} — You: <strong className="text-destructive">{selected}</strong> → Correct: <strong className="text-[hsl(var(--success))]">{correct}</strong>
-      </div>
-
-      <div>
-        <label className="text-[10px] text-muted-foreground font-bold">MISTAKE TYPE</label>
-        <div className="flex gap-1.5 flex-wrap mt-1">
-          {(Object.entries(MISTAKE_TYPES) as [MistakeType, typeof MISTAKE_TYPES[MistakeType]][]).map(([type, meta]) => (
-            <button key={type} onClick={() => setMistakeType(type)}
-              className={`px-2 py-1 rounded text-[11px] font-bold transition-colors ${
-                mistakeType === type ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:text-foreground'
-              }`}>
-              {meta.icon} {meta.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="text-[10px] text-muted-foreground font-bold">NOTES</label>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Why was this wrong?"
-          className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs min-h-[80px] font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
-      </div>
-
-      <div>
-        <label className="text-[10px] text-muted-foreground font-bold">TAGS</label>
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {tags.map(tag => (
-            <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[11px] font-mono font-bold">
-              #{tag}
-              <button onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-destructive">×</button>
-            </span>
-          ))}
-          <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) { e.preventDefault(); addTag(tagInput); }
-              if (e.key === 'Backspace' && !tagInput && tags.length) setTags(tags.slice(0, -1));
-            }}
-            onBlur={() => { if (tagInput.trim()) addTag(tagInput); }}
-            placeholder="Add tags..."
-            className="flex-1 min-w-[120px] h-7 px-2 bg-transparent text-foreground text-[11px] font-mono focus:outline-none" />
-        </div>
-      </div>
-
-      <div>
-        <label className="text-[10px] text-muted-foreground font-bold">QUESTION IMAGE</label>
-        <div className="mt-1 border-2 border-dashed border-border rounded-lg p-4 text-center text-xs text-muted-foreground">
-          {imageData ? (
-            <div className="space-y-2">
-              <img src={imageData} alt="Question" className="max-w-full max-h-48 mx-auto rounded-lg border border-border cursor-pointer hover:opacity-80" onClick={() => setLightbox(true)} />
-              <div className="flex gap-2 justify-center">
-                <button onClick={() => setLightbox(true)} className="text-primary text-[10px] hover:underline">🔍 View Full</button>
-                <button onClick={() => setImageData(undefined)} className="text-destructive text-[10px] hover:underline">Remove</button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="text-2xl mb-1">📋</div>
-              <div>Paste (Ctrl+V), drag & drop, or browse</div>
-              <label className="inline-block px-3 py-1.5 bg-primary text-primary-foreground rounded text-[11px] font-bold cursor-pointer hover:opacity-90">
-                📁 Browse File
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }} />
-              </label>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <button onClick={handleSave} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-bold text-xs">
-          {existing ? 'Update' : 'Save'} Annotation
-        </button>
-        <button onClick={onCancel} className="px-4 py-2 border border-border rounded-lg text-xs text-foreground hover:bg-muted">Cancel</button>
-      </div>
-
-      {/* Lightbox */}
-      {lightbox && imageData && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/90 backdrop-blur-sm" onClick={() => setLightbox(false)}>
-          <img src={imageData} alt="Question" className="max-w-[90vw] max-h-[90vh] rounded-lg border border-border shadow-2xl" />
-          <button onClick={() => setLightbox(false)} className="absolute top-4 right-4 text-foreground text-2xl font-bold hover:text-destructive">✕</button>
         </div>
       )}
     </div>

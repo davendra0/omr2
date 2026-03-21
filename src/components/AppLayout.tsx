@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import DarkModeToggle from '@/components/DarkModeToggle';
 import { getWorkspaceName, setWorkspaceName } from '@/lib/workspaceStore';
 import { getShortcuts, matchesShortcut, ACTION_ROUTES } from '@/lib/shortcutStore';
+import { useAuth } from '@/components/AuthProvider';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -30,6 +31,13 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+
+  const isAdmin = user?.email === 'manishayadav0512198500@gmail.com' || localStorage.getItem('admin_passcode') === "Davendra@07";
+
+  const currentNavItems = isAdmin 
+    ? [...navItems.slice(0, 1), { path: '/admin', label: 'Admin', icon: '🛡️' }, ...navItems.slice(1)]
+    : navItems;
 
   // Close sidebar on mobile when route changes
   useEffect(() => {
@@ -134,7 +142,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </div>
 
         <nav className="flex-1 p-3 space-y-1.5 lg:space-y-1 overflow-y-auto scrollbar-hide">
-          {navItems.map((item) => {
+          {currentNavItems.map((item) => {
             const isActive = item.path === '/' 
               ? location.pathname === '/' 
               : location.pathname.startsWith(item.path);

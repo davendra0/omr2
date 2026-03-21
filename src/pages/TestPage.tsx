@@ -1,8 +1,8 @@
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, X } from 'lucide-react';
 import { useTestStore } from '@/store/testStore';
 import Timer from '@/components/Timer';
-import DarkModeToggle from '@/components/DarkModeToggle';
 import type { Option, MarkType } from '@/types/test';
 import { MARK_ICONS } from '@/types/test';
 
@@ -18,6 +18,7 @@ const TestPage = () => {
   const [showPanel, setShowPanel] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
   const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -63,7 +64,7 @@ const TestPage = () => {
   const handleEnd = useCallback(() => {
     localStorage.removeItem(AUTOSAVE_KEY);
     endTest();
-    navigate('/results');
+    navigate('/results', { replace: true });
   }, [endTest, navigate]);
 
   const sections = useMemo(() => {
@@ -137,10 +138,17 @@ const TestPage = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Sticky header */}
-      <div className="sticky top-0 z-50 bg-card border-b-2 border-border px-4 py-2">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowQuitWarning(true)} className="px-2 py-2 border border-border rounded text-sm text-foreground hover:bg-muted" title="Home">🏠</button>
+      <div className="sticky top-0 z-50 bg-card border-b border-border px-3 py-1.5 sm:px-4 sm:py-2">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button 
+              onClick={() => setShowQuitWarning(true)} 
+              className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 border border-border rounded text-xs sm:text-sm text-foreground hover:bg-muted font-bold"
+              title="Quit Test"
+            >
+              <ArrowLeft size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Quit</span>
+            </button>
             <Timer
               totalSeconds={config.timeInMinutes * 60}
               onTimeUp={handleEnd}
@@ -149,29 +157,27 @@ const TestPage = () => {
               wallClockStartTime={config.wallClockStartTime}
             />
           </div>
-          <div className="flex items-center gap-3 text-sm font-mono flex-wrap">
-            {config.isServerTest && (
-              <span className="text-primary font-bold text-xs">Q{currentQ?.questionNo}</span>
-            )}
-            {dp.showQuestionRange && !config.isServerTest && (
-              <span className="text-muted-foreground text-xs">Q{config.startFrom}–{config.startFrom + config.totalQuestions - 1}</span>
-            )}
-            {dp.showAnswered && (
-              <span className="text-primary font-bold text-xs">✓ {stats.answered}/{stats.total}</span>
-            )}
-            {dp.showQuestionsLeft && (
-              <span className="text-muted-foreground text-xs">○ {stats.left} left</span>
-            )}
-            {dp.showMarked && stats.marked > 0 && (
-              <span className="text-[hsl(var(--review))] font-bold text-xs">⚑ {stats.marked}</span>
-            )}
-            <DarkModeToggle />
-            <button onClick={() => setShowPanel(p => !p)} className="px-2 py-1.5 border border-border rounded text-xs font-bold text-foreground hover:bg-muted" title="Question Panel">
-              {showPanel ? '✕' : '▦'}
-            </button>
-            <button onClick={() => setShowConfirm(true)} className="px-3 py-1.5 bg-primary text-primary-foreground font-bold rounded text-sm hover:opacity-90 transition-opacity">
-              Submit
-            </button>
+          <div className="flex items-center gap-1.5 sm:gap-3 text-sm font-mono">
+            <div className="hidden sm:flex items-center gap-3">
+              {config.isServerTest && (
+                <span className="text-primary font-bold text-xs">Q{currentQ?.questionNo}</span>
+              )}
+              {dp.showQuestionRange && !config.isServerTest && (
+                <span className="text-muted-foreground text-xs">Q{config.startFrom}–{config.startFrom + config.totalQuestions - 1}</span>
+              )}
+              {dp.showAnswered && (
+                <span className="text-primary font-bold text-xs">✓ {stats.answered}/{stats.total}</span>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button onClick={() => setShowPanel(p => !p)} className="p-1.5 border border-border rounded text-xs font-bold text-foreground hover:bg-muted" title="Question Panel">
+                {showPanel ? '✕' : '▦'}
+              </button>
+              <button onClick={() => setShowConfirm(true)} className="px-2.5 py-1.5 bg-primary text-primary-foreground font-bold rounded text-xs sm:text-sm hover:opacity-90 transition-opacity">
+                Submit
+              </button>
+            </div>
           </div>
         </div>
 
@@ -194,7 +200,7 @@ const TestPage = () => {
       </div>
 
       <div className="flex flex-1 max-w-5xl mx-auto w-full relative">
-        <div className="flex-1 p-4 pt-2 flex flex-col">
+        <div className="flex-1 p-2 sm:p-4 pt-2 flex flex-col">
           {config.isServerTest ? (
             <div className="flex-1 flex flex-col space-y-4">
               {/* Question Image Area */}
@@ -203,8 +209,9 @@ const TestPage = () => {
                   <img 
                     src={qImage} 
                     alt={`Question ${currentQ?.questionNo}`} 
-                    className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-sm"
+                    className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
                     referrerPolicy="no-referrer"
+                    onClick={() => setFullscreenImage(qImage)}
                   />
                 ) : (
                   <div className="text-muted-foreground text-sm font-mono flex flex-col items-center gap-2">
@@ -263,12 +270,20 @@ const TestPage = () => {
                   <div className="flex justify-between items-center gap-2">
                     {getQuestionType(currentQ?.questionNo) === 'numerical' ? (
                       <div className="flex-1 flex flex-col gap-2">
-                        <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Numerical Answer</label>
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Numerical Answer</label>
+                          <button 
+                            onClick={() => selectOption(currentQ?.questionNo, null)}
+                            className="text-[10px] font-bold text-destructive hover:underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
                         <input
                           type="number"
                           value={currentQ?.selected || ''}
                           onChange={(e) => selectOption(currentQ?.questionNo, e.target.value)}
-                          placeholder="Enter integer..."
+                          placeholder="Enter value..."
                           className="w-full h-14 bg-muted border-2 border-border rounded-xl px-4 font-mono text-xl font-bold focus:border-primary focus:outline-none transition-colors"
                         />
                       </div>
@@ -343,13 +358,24 @@ const TestPage = () => {
                       </span>
                       <div className="flex items-center gap-1.5 flex-1">
                         {getQuestionType(r.questionNo) === 'numerical' ? (
-                          <input
-                            type="number"
-                            value={r.selected || ''}
-                            onChange={(e) => selectOption(r.questionNo, e.target.value)}
-                            placeholder="Value"
-                            className="w-full h-10 bg-muted border-2 border-border rounded-lg px-3 font-mono text-sm font-bold focus:border-primary focus:outline-none transition-colors"
-                          />
+                          <div className="flex items-center gap-2 flex-1">
+                            <input
+                              type="number"
+                              value={r.selected || ''}
+                              onChange={(e) => selectOption(r.questionNo, e.target.value)}
+                              placeholder="Value"
+                              className="w-full h-10 bg-muted border-2 border-border rounded-lg px-3 font-mono text-sm font-bold focus:border-primary focus:outline-none transition-colors"
+                            />
+                            {r.selected && (
+                              <button 
+                                onClick={() => selectOption(r.questionNo, null)}
+                                className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                                title="Clear"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           optionsList.map((opt) => {
                             const isElim = qEliminated.has(opt!);
@@ -505,6 +531,26 @@ const TestPage = () => {
               <button onClick={() => navigate('/')} className="px-4 py-2 bg-destructive text-destructive-foreground rounded text-sm font-bold hover:opacity-90">Quit</button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Fullscreen Image Viewer */}
+      {fullscreenImage && (
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <button 
+            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); setFullscreenImage(null); }}
+          >
+            <X size={24} />
+          </button>
+          <img 
+            src={fullscreenImage} 
+            alt="Fullscreen" 
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

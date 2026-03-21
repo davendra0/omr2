@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useTestStore } from '@/store/testStore';
-import DarkModeToggle from '@/components/DarkModeToggle';
 import type { AnswerKey, Option } from '@/types/test';
 
 const validOptions = ['A', 'B', 'C', 'D'];
@@ -73,23 +73,15 @@ const AnswerKeyPage = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/')}
-              className="px-2 py-2 border border-border rounded text-sm text-foreground hover:bg-muted"
-              title="Home"
-            >
-              🏠
-            </button>
-            <button
               onClick={() => navigate('/results')}
-              className="px-3 py-2 border border-border rounded text-sm text-foreground hover:bg-muted"
+              className="px-3 py-2 border border-border rounded text-sm text-foreground hover:bg-muted flex items-center gap-1.5"
             >
-              ← Back
+              <ArrowLeft size={16} /> Back
             </button>
             <h1 className="text-xl font-bold font-mono text-foreground">Answer Key</h1>
           </div>
           <div className="flex items-center gap-3">
             <span className="font-mono text-sm text-muted-foreground">{totalFilled}/{questions.length}</span>
-            <DarkModeToggle />
           </div>
         </div>
 

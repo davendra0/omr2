@@ -10,7 +10,9 @@ import TestPage from "./pages/TestPage";
 import ResultsPage from "./pages/ResultsPage";
 import AnswerKeyPage from "./pages/AnswerKeyPage";
 import AnalysisPage from "./pages/AnalysisPage";
+import ReviewPage from "./pages/ReviewPage";
 import HistoryPage from "./pages/HistoryPage";
+import AdminDashboard from "./pages/AdminDashboard";
 import CountdownPage from "./pages/CountdownPage";
 import PomodoroPage from "./pages/PomodoroPage";
 import TodoPage from "./pages/TodoPage";
@@ -53,6 +55,9 @@ const App = () => (
             <Route path="/results" element={<AppLayout><ResultsPage /></AppLayout>} />
             <Route path="/answer-key" element={<AppLayout><AnswerKeyPage /></AppLayout>} />
             <Route path="/analysis" element={<AppLayout><AnalysisPage /></AppLayout>} />
+            <Route path="/review" element={<ReviewPage />} />
+            <Route path="/results/submission/:submissionId" element={<AppLayout><ResultsPage /></AppLayout>} />
+            <Route path="/admin" element={<AppLayout><AdminDashboard /></AppLayout>} />
             <Route path="/history" element={<AppLayout><HistoryPage /></AppLayout>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,12 +1,16 @@
 import type { TestResult, AnswerKey, Option } from '@/types/test';
+import type { QuestionAnnotation } from '@/lib/mistakeStore';
+import { MISTAKE_TYPES } from '@/lib/mistakeStore';
 
 interface ExportData {
   testName: string;
   result: TestResult;
   answerKey: AnswerKey | null;
+  includeAnnotations?: boolean;
+  annotations?: QuestionAnnotation[];
 }
 
-export function exportTestAsHtml({ testName, result, answerKey }: ExportData) {
+export function exportTestAsHtml({ testName, result, answerKey, includeAnnotations, annotations = [] }: ExportData) {
   const { responses, startTime, endTime, config } = result;
   const totalTimeSec = Math.round((endTime - startTime) / 1000);
   const answered = responses.filter(r => r.selected !== null).length;
@@ -161,6 +165,57 @@ export function exportTestAsHtml({ testName, result, answerKey }: ExportData) {
     `<div class="opt-card"><div class="opt-letter">${o}</div><div class="opt-yours">${optDist[o as keyof typeof optDist]}</div><div class="opt-label">Yours</div><hr class="opt-hr"/><div class="opt-key">${keyDist[o as keyof typeof keyDist]}</div><div class="opt-label">Key</div></div>`
   ).join('');
 
+  // Detailed Analysis HTML
+  const detailedAnalysisHtml = responses.map(r => {
+    const qd = questionData.find(q => q.qNo === r.questionNo)!;
+    const ann = annotations.find(a => a.questionNo === r.questionNo);
+    const mType = ann ? MISTAKE_TYPES[ann.mistakeType] : null;
+
+    return `
+    <div class="detailed-card ${qd.isCorrect ? 'border-success' : qd.isWrong ? 'border-danger' : 'border-muted'}">
+      <div class="detailed-header">
+        <span class="detailed-qno">Question ${r.questionNo}</span>
+        <div class="detailed-status">
+          ${qd.isCorrect ? '<span class="badge badge-success">✓ Correct</span>' : 
+            qd.isWrong ? '<span class="badge badge-danger">✗ Wrong</span>' : 
+            '<span class="badge badge-muted">Skipped</span>'}
+          <span class="badge badge-info">${qd.timeGap ? fmt(qd.timeGap) : '—'}</span>
+        </div>
+      </div>
+
+      <div class="detailed-body">
+        <div class="detailed-answers">
+          <div class="ans-box">
+            <span class="ans-label">Your Answer</span>
+            <span class="ans-val ${qd.isCorrect ? 'color-success' : qd.isWrong ? 'color-danger' : ''}">${qd.selected || '—'}</span>
+          </div>
+          <div class="ans-box border-success-light">
+            <span class="ans-label color-success">Correct Answer</span>
+            <span class="ans-val color-success">${qd.correctAns || '—'}</span>
+          </div>
+        </div>
+
+        ${ann?.imageData ? `
+        <div class="detailed-image">
+          <img src="${ann.imageData}" alt="Question ${r.questionNo}" />
+        </div>` : ''}
+
+        ${ann ? `
+        <div class="detailed-annotation">
+          <div class="ann-type">
+            <span class="ann-icon">${mType?.icon || '📝'}</span>
+            <span class="ann-label">${mType?.label || 'Annotation'}</span>
+          </div>
+          ${ann.notes ? `<div class="ann-notes">${ann.notes}</div>` : ''}
+          ${ann.tags && ann.tags.length > 0 ? `
+          <div class="ann-tags">
+            ${ann.tags.map(t => `<span class="tag">#${t}</span>`).join('')}
+          </div>` : ''}
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('\n');
+
   const exportDate = new Date().toLocaleString();
   const testDate = new Date(startTime).toLocaleString();
 
@@ -249,6 +304,34 @@ td{padding:8px;border-bottom:1px solid #f0f1f4}
 .opt-key{color:#22c55e;font-family:'Courier New',monospace;font-weight:700}
 .opt-label{font-size:10px;color:#888}
 .opt-hr{border:none;border-top:1px solid #e0e2e8;margin:6px 0}
+/* Detailed Analysis */
+.detailed-card{background:#fff;border:1px solid #e0e2e8;border-radius:12px;margin-bottom:24px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+.detailed-header{padding:12px 16px;background:#f8f9fa;border-bottom:1px solid #e0e2e8;display:flex;justify-content:space-between;align-items:center}
+.detailed-qno{font-weight:700;font-family:'Courier New',monospace;font-size:16px}
+.detailed-status{display:flex;gap:8px}
+.badge{padding:4px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
+.badge-success{background:rgba(34,197,94,.1);color:#22c55e}
+.badge-danger{background:rgba(239,68,68,.1);color:#ef4444}
+.badge-muted{background:rgba(153,153,153,.1);color:#999}
+.badge-info{background:rgba(42,157,143,.1);color:#2a9d8f}
+.detailed-body{padding:16px}
+.detailed-answers{display:flex;gap:12px;margin-bottom:16px}
+.ans-box{flex:1;padding:12px;border-radius:8px;border:1px solid #e0e2e8;display:flex;flex-direction:column;align-items:center}
+.ans-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:4px}
+.ans-val{font-size:18px;font-weight:700;font-family:'Courier New',monospace}
+.border-success-light{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.02)}
+.border-success{border-left:4px solid #22c55e}
+.border-danger{border-left:4px solid #ef4444}
+.border-muted{border-left:4px solid #999}
+.detailed-image{margin-bottom:16px;border:1px solid #e0e2e8;border-radius:8px;overflow:hidden;text-align:center;background:#fcfcfc}
+.detailed-image img{max-width:100%;max-height:400px;object-contain:contain}
+.detailed-annotation{padding:12px;background:#fdfdfd;border:1px solid #eee;border-radius:8px}
+.ann-type{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ann-icon{font-size:20px}
+.ann-label{font-weight:700;font-size:13px}
+.ann-notes{font-size:13px;font-style:italic;color:#444;margin-bottom:8px;padding-left:12px;border-left:2px solid #ddd}
+.ann-tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:10px;font-weight:700;color:#2a9d8f;background:rgba(42,157,143,.1);padding:2px 8px;border-radius:10px}
 /* Print */
 @media print{.tabs{display:none}.panel{display:block!important}body{background:#fff}}
 </style>
@@ -267,6 +350,7 @@ td{padding:8px;border-bottom:1px solid #f0f1f4}
     <div class="tab active" onclick="showTab('response')">Response Sheet</div>
     ${answerKey ? '<div class="tab" onclick="showTab(\'analysis\')">Analysis</div>' : ''}
     ${answerKey ? '<div class="tab" onclick="showTab(\'charts\')">Charts</div>' : ''}
+    ${includeAnnotations ? '<div class="tab" onclick="showTab(\'detailed\')">Question Paper & Review</div>' : ''}
     <div class="tab" onclick="showTab('table')">Question Table</div>
   </div>
 
@@ -364,6 +448,14 @@ td{padding:8px;border-bottom:1px solid #f0f1f4}
       </div>
     </div>
   </div>
+
+  ${includeAnnotations ? `
+  <!-- QUESTION PAPER & REVIEW -->
+  <div id="panel-detailed" class="panel">
+    <h2 style="margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Question Paper & Detailed Review</h2>
+    ${detailedAnalysisHtml}
+  </div>
+  ` : ''}
 </div>
 
 <script>

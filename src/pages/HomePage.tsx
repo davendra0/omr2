@@ -6,15 +6,20 @@ import { getTodaySessions } from '@/lib/pomodoroStore';
 import { getTodos } from '@/lib/todoStore';
 import { getAllMistakes } from '@/lib/mistakeStore';
 import { useTestStore } from '@/store/testStore';
+import { useAuth } from '@/components/AuthProvider';
+import { Shield, ArrowRight } from 'lucide-react';
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [testCount, setTestCount] = useState(0);
   const [nextCountdown, setNextCountdown] = useState<Countdown | null>(null);
   const [todayFocus, setTodayFocus] = useState(0);
   const [tasksDone, setTasksDone] = useState({ done: 0, total: 0 });
   const [mistakeCount, setMistakeCount] = useState(0);
   const [hasAutosave, setHasAutosave] = useState(false);
+
+  const isAdmin = user?.email === 'manishayadav0512198500@gmail.com' || localStorage.getItem('admin_passcode') === "Davendra@07";
 
   useEffect(() => {
     setTestCount(getSavedTests().length);
@@ -97,6 +102,27 @@ const HomePage = () => {
             <button onClick={() => { localStorage.removeItem('omr_autosave'); setHasAutosave(false); }}
               className="px-3 py-1.5 border border-border rounded-lg text-xs text-muted-foreground hover:bg-muted">Discard</button>
           </div>
+        </div>
+      )}
+
+      {/* Admin Prompt */}
+      {isAdmin && (
+        <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+              <Shield size={20} />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-foreground">Admin Access Detected</div>
+              <div className="text-xs text-muted-foreground">You can monitor all user submissions from the dashboard.</div>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate('/admin')}
+            className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
+          >
+            Dashboard <ArrowRight size={14} />
+          </button>
         </div>
       )}
 

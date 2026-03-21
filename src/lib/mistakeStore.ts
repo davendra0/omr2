@@ -1,4 +1,4 @@
-export type MistakeType = 'silly' | 'time_crunch' | 'concept_lag' | 'calculation' | 'misread' | 'guessed' | 'other';
+export type MistakeType = 'time_insuff' | 'concept_gap' | 'ans_not_coming' | 'good_ques' | 'new_concept' | 'doubt' | 'silly' | 'other';
 
 export interface QuestionAnnotation {
   testId: string;
@@ -17,13 +17,14 @@ export interface QuestionAnnotation {
 const STORE_KEY = 'workspace_question_annotations';
 
 export const MISTAKE_TYPES: Record<MistakeType, { label: string; icon: string; color: string }> = {
-  silly: { label: 'Silly Mistake', icon: '🤦', color: 'text-accent' },
-  time_crunch: { label: 'Time Crunch', icon: '⏰', color: 'text-destructive' },
-  concept_lag: { label: 'Concept Gap', icon: '📚', color: 'text-primary' },
-  calculation: { label: 'Calculation Error', icon: '🔢', color: 'text-[hsl(262,83%,58%)]' },
-  misread: { label: 'Misread Question', icon: '👀', color: 'text-[hsl(25,95%,53%)]' },
-  guessed: { label: 'Wrong Guess', icon: '🎲', color: 'text-muted-foreground' },
-  other: { label: 'Other', icon: '❓', color: 'text-foreground' },
+  time_insuff: { label: 'Time Insuff', icon: '⏰', color: 'text-destructive' },
+  concept_gap: { label: 'Concept Gap', icon: '📚', color: 'text-primary' },
+  ans_not_coming: { label: 'Ans Not Coming', icon: '🚫', color: 'text-[hsl(25,95%,53%)]' },
+  good_ques: { label: 'Good Ques', icon: '⭐', color: 'text-[hsl(47,95%,50%)]' },
+  new_concept: { label: 'New Concept', icon: '✨', color: 'text-[hsl(142,71%,45%)]' },
+  doubt: { label: 'Doubt', icon: '❓', color: 'text-accent' },
+  silly: { label: 'Silly Mistake', icon: '🤦', color: 'text-muted-foreground' },
+  other: { label: 'Other', icon: '📝', color: 'text-foreground' },
 };
 
 export function getAnnotations(): QuestionAnnotation[] {
