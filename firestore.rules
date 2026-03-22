@@ -77,7 +77,8 @@ service cloud.firestore {
       return hasRequiredFields(['testId', 'userId', 'answers', 'completedAt']) &&
         data.testId is string &&
         (data.userId == request.auth.uid || data.userId == 'admin_davendra') &&
-        data.answers is map;
+        data.answers is map &&
+        (!('testOwnerId' in data) || data.testOwnerId == null || data.testOwnerId is string);
     }
 
     // ===============================================================
@@ -91,14 +92,22 @@ service cloud.firestore {
     }
 
     match /submissions/{submissionId} {
-      allow read: if true;
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin() ||
+        resource.data.testOwnerId == request.auth.uid
+      );
       allow create: if (isAuthenticated() || request.resource.data.userId == 'admin_davendra') && isValidSubmission(request.resource.data);
       allow update: if false; // Submissions are immutable
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
     match /annotations/{annotationId} {
-      allow read: if true;
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin() ||
+        get(/databases/$(database)/documents/tests/$(resource.data.testId)).data.createdBy == request.auth.uid
+      );
       allow create: if isAuthenticated() || request.resource.data.userId == 'admin_davendra';
       allow update: if isOwner(resource.data.userId) || isAdmin();
       allow delete: if isOwner(resource.data.userId) || isAdmin();

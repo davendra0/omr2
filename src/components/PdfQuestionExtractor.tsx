@@ -4,6 +4,7 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { Button } from './ui/button';
 import { ChevronLeft, ChevronRight, Crop, Check, X, Loader2, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -12,9 +13,21 @@ interface PdfQuestionExtractorProps {
   onCapture: (imageData: string) => void;
   onClose: () => void;
   currentQuestion: number;
+  startFrom: number;
+  numQuestions: number;
+  questions: { id: number; imageUrl: string }[];
+  onQuestionSelect: (qId: number) => void;
 }
 
-export const PdfQuestionExtractor: React.FC<PdfQuestionExtractorProps> = ({ onCapture, onClose, currentQuestion }) => {
+export const PdfQuestionExtractor: React.FC<PdfQuestionExtractorProps> = ({ 
+  onCapture, 
+  onClose, 
+  currentQuestion,
+  startFrom,
+  numQuestions,
+  questions,
+  onQuestionSelect
+}) => {
   const [pdf, setPdf] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [pageNum, setPageNum] = useState(1);
   const [numPages, setNumPages] = useState(0);
@@ -213,7 +226,7 @@ export const PdfQuestionExtractor: React.FC<PdfQuestionExtractorProps> = ({ onCa
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => setScale(s => Math.max(0.5, s - 0.5))}
+                  onClick={() => setScale(s => Math.max(0.25, s - 0.25))}
                 >
                   -
                 </Button>
@@ -221,7 +234,7 @@ export const PdfQuestionExtractor: React.FC<PdfQuestionExtractorProps> = ({ onCa
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => setScale(s => Math.min(5, s + 0.5))}
+                  onClick={() => setScale(s => Math.min(5, s + 0.25))}
                 >
                   +
                 </Button>
@@ -253,56 +266,87 @@ export const PdfQuestionExtractor: React.FC<PdfQuestionExtractorProps> = ({ onCa
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col relative bg-muted/30">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-50">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex-1 overflow-hidden flex relative bg-muted/30">
+        {/* Left Sidebar - Question Navigator */}
+        <div className="w-20 lg:w-24 border-r border-border bg-muted/10 flex flex-col h-full overflow-hidden shrink-0">
+          <div className="p-2 border-b border-border text-center">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Nav</span>
           </div>
-        )}
-
-        {!pdf && !loading && (
-          <div className="flex-1 flex flex-col items-center justify-center space-y-4">
-            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
-              <FileText className="w-10 h-10 text-muted-foreground/40" />
-            </div>
-            <div className="text-center">
-              <h3 className="font-bold text-lg">No PDF Selected</h3>
-              <p className="text-sm text-muted-foreground">Open a PDF to start extracting questions</p>
-            </div>
-          </div>
-        )}
-
-        {pdf && (
-          <div 
-            ref={containerRef}
-            className="flex-1 overflow-auto p-8 flex justify-center relative cursor-crosshair select-none"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
-            <div className="relative shadow-2xl bg-white">
-              <canvas ref={canvasRef} />
-              
-              {/* Selection Rectangle */}
-              {(selection.width > 0 || selection.height > 0) && (
-                <div
-                  className="absolute border-2 border-primary bg-primary/10 pointer-events-none"
-                  style={{
-                    left: selection.x,
-                    top: selection.y,
-                    width: selection.width,
-                    height: selection.height,
-                  }}
+          <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-hide">
+            {Array.from({ length: numQuestions }).map((_, i) => {
+              const qId = startFrom + i;
+              const qData = questions.find(q => q.id === qId);
+              return (
+                <button
+                  key={qId}
+                  onClick={() => onQuestionSelect(qId)}
+                  className={cn(
+                    "w-full aspect-square rounded border flex flex-col items-center justify-center transition-all",
+                    currentQuestion === qId ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/50",
+                    qData?.imageUrl ? "border-success/50" : ""
+                  )}
                 >
-                  <div className="absolute -top-6 left-0 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                    <Crop size={10} /> Q{currentQuestion}
+                  <span className="text-[10px] font-bold">{qId}</span>
+                  <div className="flex gap-0.5 mt-0.5">
+                    {qData?.imageUrl && <div className="w-1 h-1 rounded-full bg-blue-500" />}
                   </div>
-                </div>
-              )}
-            </div>
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
+
+        <div className="flex-1 overflow-hidden flex flex-col relative">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-50">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          )}
+
+          {!pdf && !loading && (
+            <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+                <FileText className="w-10 h-10 text-muted-foreground/40" />
+              </div>
+              <div className="text-center">
+                <h3 className="font-bold text-lg">No PDF Selected</h3>
+                <p className="text-sm text-muted-foreground">Open a PDF to start extracting questions</p>
+              </div>
+            </div>
+          )}
+
+          {pdf && (
+            <div 
+              ref={containerRef}
+              className="flex-1 overflow-auto p-8 flex justify-center relative cursor-crosshair select-none"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+              <div className="relative shadow-2xl bg-white">
+                <canvas ref={canvasRef} />
+                
+                {/* Selection Rectangle */}
+                {(selection.width > 0 || selection.height > 0) && (
+                  <div
+                    className="absolute border-2 border-primary bg-primary/10 pointer-events-none"
+                    style={{
+                      left: selection.x,
+                      top: selection.y,
+                      width: selection.width,
+                      height: selection.height,
+                    }}
+                  >
+                    <div className="absolute -top-6 left-0 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <Crop size={10} /> Q{currentQuestion}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="h-10 bg-card border-t border-border flex items-center px-4 justify-between text-[10px] text-muted-foreground font-mono">

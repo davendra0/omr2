@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
 import { auth } from '@/firebase';
 
 interface AuthContextType {
@@ -25,9 +25,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        setLoading(false);
       } else {
         // Re-check for local admin passcode if no firebase user
         const currentAdminPass = localStorage.getItem('admin_passcode');
@@ -37,11 +38,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             displayName: 'Admin (Davendra)',
             email: 'dav08kum@gmail.com' 
           } as User);
+          setLoading(false);
         } else {
-          setUser(null);
+          // Sign in anonymously so normal users can submit tests
+          try {
+            const result = await signInAnonymously(auth);
+            setUser(result.user);
+          } catch (error) {
+            console.error("Anonymous auth failed:", error);
+            setUser(null);
+          } finally {
+            setLoading(false);
+          }
         }
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);

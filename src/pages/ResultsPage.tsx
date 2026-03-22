@@ -155,6 +155,7 @@ const ResultsPage = () => {
 
         const docRef = await addDoc(collection(db, 'submissions'), {
           testId: result.config.testId,
+          testOwnerId: result.config.testOwnerId || null,
           userId,
           answers,
           annotations,
@@ -182,7 +183,7 @@ const ResultsPage = () => {
     };
 
     submitToServer();
-  }, [result, answerKey, submitted, submitting]);
+  }, [result, answerKey, submitted, submitting, submissionDocId, submissionId]);
 
   const handleMark = async (questionNo: number, mistakeType: MistakeType) => {
     if (!result) return;

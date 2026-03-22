@@ -618,7 +618,14 @@ const CreateTestPage = () => {
               <Button 
                 variant="outline" 
                 className="w-full justify-start gap-2 h-9 text-xs bg-primary/5 border-primary/20 hover:bg-primary/10"
-                onClick={() => setShowPdfExtractor(true)}
+                onClick={() => {
+                  // Find first question without an image
+                  const firstEmpty = Array.from({ length: numQuestions }).map((_, i) => startFrom + i).find(qId => !questions.find(q => q.id === qId)?.imageUrl);
+                  if (firstEmpty) {
+                    setActiveQuestion(firstEmpty);
+                  }
+                  setShowPdfExtractor(true);
+                }}
                 disabled={loading}
               >
                 <FileText className="w-3.5 h-3.5 text-primary" />
@@ -852,6 +859,10 @@ const CreateTestPage = () => {
       {showPdfExtractor && (
         <PdfQuestionExtractor 
           currentQuestion={activeQuestion}
+          startFrom={startFrom}
+          numQuestions={numQuestions}
+          questions={questions}
+          onQuestionSelect={setActiveQuestion}
           onCapture={handlePdfCapture}
           onClose={() => setShowPdfExtractor(false)}
         />

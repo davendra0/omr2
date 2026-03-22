@@ -61,6 +61,7 @@ export interface TestConfig {
   wallClockStartTime?: string; // HH:MM format e.g. "14:00"
   isServerTest?: boolean;
   testId?: string;
+  testOwnerId?: string;
   title?: string;
   description?: string;
   questionImages?: Record<number, string>; // questionNo -> base64/url
