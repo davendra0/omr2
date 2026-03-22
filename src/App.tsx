@@ -56,6 +56,7 @@ const App = () => (
             <Route path="/answer-key" element={<AppLayout><AnswerKeyPage /></AppLayout>} />
             <Route path="/analysis" element={<AppLayout><AnalysisPage /></AppLayout>} />
             <Route path="/review" element={<ReviewPage />} />
+            <Route path="/review/submission/:submissionId" element={<ReviewPage />} />
             <Route path="/results/submission/:submissionId" element={<AppLayout><ResultsPage /></AppLayout>} />
             <Route path="/admin" element={<AppLayout><AdminDashboard /></AppLayout>} />
             <Route path="/history" element={<AppLayout><HistoryPage /></AppLayout>} />

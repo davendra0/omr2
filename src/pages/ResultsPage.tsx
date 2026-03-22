@@ -66,9 +66,44 @@ const ResultsPage = () => {
           return;
         }
         const data = subDoc.data();
+        
+        const testDoc = await getDoc(doc(db, 'tests', data.testId));
+        if (!testDoc.exists()) {
+          toast.error("Associated test not found");
+          navigate('/');
+          return;
+        }
+        const testData = testDoc.data();
+        
+        const responses = Object.entries(data.answers).map(([qNo, selected]) => ({
+          questionNo: parseInt(qNo),
+          selected: selected as string | null,
+          timeSpent: 0
+        }));
+
+        const reconstructedResult: TestResult = {
+          config: {
+            testId: data.testId,
+            title: testData.title,
+            totalQuestions: testData.numQuestions,
+            startFrom: testData.startFrom,
+            timeInMinutes: testData.timeInMinutes,
+            sections: testData.sections,
+            isServerTest: true
+          },
+          responses,
+          startTime: data.completedAt?.toMillis() || Date.now(),
+          endTime: data.completedAt?.toMillis() || Date.now()
+        };
+
+        const reconstructedAnswerKey: AnswerKey = {};
+        (testData.questions || []).forEach((q: any) => {
+          reconstructedAnswerKey[q.id] = q.correctAnswer;
+        });
+
         setRemoteData({
-          result: data.result,
-          answerKey: data.answerKey,
+          result: reconstructedResult,
+          answerKey: reconstructedAnswerKey,
           annotations: data.annotations || []
         });
         setSubmitted(true);
@@ -227,8 +262,11 @@ const ResultsPage = () => {
     
     if (submissionDocId) {
       try {
+        const adminPasscode = localStorage.getItem('admin_passcode');
+        const isAdmin = adminPasscode === "Davendra@07";
         await updateDoc(doc(db, 'submissions', submissionDocId), {
-          annotations: updatedAnnotations
+          annotations: updatedAnnotations,
+          ...(isAdmin ? { passcode: "Davendra@07" } : {})
         });
       } catch (error) {
         console.error("Error updating annotations on server:", error);
@@ -706,23 +744,22 @@ const ResultsPage = () => {
                         )}
                       </div>
 
-                      {(isWrong || isSkipped) && ann?.mistakeType && ann.mistakeType.length > 0 && (
+                      {(isWrong || isSkipped) && ann?.mistakeType && (
                         <div className="flex flex-wrap gap-2 mt-4">
-                          {ann.mistakeType.map(type => {
-                            const mistakeInfo = MISTAKE_TYPES.find(m => m.id === type);
+                          {(() => {
+                            const mistakeInfo = MISTAKE_TYPES[ann.mistakeType];
                             if (!mistakeInfo) return null;
-                            const Icon = mistakeInfo.icon;
                             return (
-                              <div key={type} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium" style={{ borderColor: mistakeInfo.color, color: mistakeInfo.color, backgroundColor: `${mistakeInfo.color}15` }}>
-                                <Icon size={14} />
+                              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium" style={{ borderColor: mistakeInfo.color, color: mistakeInfo.color, backgroundColor: `${mistakeInfo.color}15` }}>
+                                <span>{mistakeInfo.icon}</span>
                                 {mistakeInfo.label}
                               </div>
                             );
-                          })}
-                          {ann.note && (
+                          })()}
+                          {ann.notes && (
                             <div className="w-full mt-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg border border-border/50">
                               <span className="font-bold text-foreground mr-2">Note:</span>
-                              {ann.note}
+                              {ann.notes}
                             </div>
                           )}
                         </div>

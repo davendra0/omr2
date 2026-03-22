@@ -242,36 +242,13 @@ const SetupPage = () => {
     setIsSubmissionsOpen(true);
     const path = 'submissions';
     try {
-      const isRealAdmin = user?.email === "manishayadav0512198500@gmail.com" || user?.email === "dav08kum@gmail.com";
-      const isAdmin = user?.uid === 'admin_davendra' || isRealAdmin;
-      
-      let q;
-      if (isAdmin) {
-        q = query(
-          collection(db, path),
-          where('testId', '==', test.id),
-          orderBy('completedAt', 'desc')
-        );
-      } else {
-        q = query(
-          collection(db, path),
-          where('testId', '==', test.id),
-          where('testOwnerId', '==', user?.uid)
-        );
-      }
-      
+      const q = query(
+        collection(db, path),
+        where('testId', '==', test.id),
+        orderBy('completedAt', 'desc')
+      );
       const snapshot = await getDocs(q);
-      let subs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // Sort in memory if not admin
-      if (!isAdmin) {
-        subs.sort((a: any, b: any) => {
-          const timeA = a.completedAt?.toMillis?.() || 0;
-          const timeB = b.completedAt?.toMillis?.() || 0;
-          return timeB - timeA;
-        });
-      }
-      
+      const subs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSubmissions(subs);
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, path);
